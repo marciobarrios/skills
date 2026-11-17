@@ -1,4 +1,4 @@
-# skills
+# Personal Skills
 
 My agent skills for Claude Code, Codex, Cursor and other agents that support
 [skills](https://github.com/vercel-labs/skills).
@@ -38,8 +38,3 @@ npx skills@latest add imxv/Pretty-mermaid-skills -g
 ```
 
 It also expects the GitHub CLI (`gh`) and a Linear MCP server.
-
-## Adding a skill
-
-Create `skills/<name>/SKILL.md` with `name` and `description` frontmatter, add
-it to the table above, and push.
