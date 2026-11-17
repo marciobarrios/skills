@@ -25,7 +25,7 @@ npx skills@latest update -g
 |---|---|
 | [autopilot](skills/autopilot/SKILL.md) | `autopilot <Linear issue>`: implements the issue end to end, verifies it, gets an independent review, opens a PR with evidence, checks migrations, assesses merge risk, auto-merges when safe, and monitors production. |
 
-### autopilot dependencies
+## Requirements
 
 autopilot calls other skills. Install them once per machine:
 
