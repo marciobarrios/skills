@@ -25,6 +25,20 @@ npx skills@latest update -g
 |---|---|
 | [autopilot](skills/autopilot/SKILL.md) | `autopilot <Linear issue>`: implements the issue end to end, verifies it, gets an independent review, opens a PR with evidence, checks migrations, assesses merge risk, auto-merges when safe, and monitors production. |
 
+### autopilot dependencies
+
+autopilot calls other skills. Install them once per machine:
+
+```bash
+npx skills@latest add t3dotgg/tstack --skill sol-loop -g
+npx skills@latest add warpdotdev/common-skills --skill merge-risk -g
+npx skills@latest add vercel-labs/before-and-after -g
+npx skills@latest add vercel-labs/agent-browser -g
+npx skills@latest add imxv/Pretty-mermaid-skills -g
+```
+
+It also expects the GitHub CLI (`gh`) and a Linear MCP server.
+
 ## Adding a skill
 
 Create `skills/<name>/SKILL.md` with `name` and `description` frontmatter, add
