@@ -8,7 +8,8 @@ description: Use when the user's message starts with "autopilot" followed by a L
 Take one Linear issue from "Todo" to a merged, monitored PR without
 hand-holding:
 
-read → plan → capture *before* → implement → verify → capture *after* →
+read → plan → capture *before* → implement → simplify → verify →
+capture *after* →
 review (sol-loop) → PR → CI → Preview → merge-risk → merge or hand off →
 monitor production.
 
@@ -243,8 +244,18 @@ On the unchanged base, for visual/interaction/native rows:
   repo's conventions and the relevant skills for the stack (frontend,
   animation, security, etc.).
 - Tests first for logic and bug fixes.
-- No drive-by refactors. If you notice unrelated problems, list them as
+- No drive-by refactors: don't clean up code the change doesn't need.
+  Edits outside the diff that serve the change (see the simplify pass
+  below) are fine. If you notice unrelated problems, list them as
   follow-ups in the PR (optionally create Linear issues for them).
+- After the change works, run the `simplify` skill once on this branch's
+  diff. Edits outside the diff are fine when they serve the change
+  (reusing or extracting helpers/constants, adjusting callers of what you
+  consolidated). Cleanups of pre-existing code the change doesn't need
+  become follow-ups. If an edit changes behaviour or signatures of
+  existing shared code, its other callers must be covered by tests (add
+  them if missing) or it becomes a follow-up. Skip for config/copy-only
+  or trivial diffs. Commit as `ABC-123: simplify`; step 6 re-verifies.
 - Commit in logical steps with messages that reference the issue
   (`ABC-123: <summary>`).
 - **Stage explicit paths only** (`git add <file>…`, never `git add -A` /
