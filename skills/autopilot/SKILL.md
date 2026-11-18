@@ -109,11 +109,22 @@ switch branches, stash, reset, or commit in the main checkout.
    Linear ↔ GitHub link automatic); fall back to `<id-lowercase>-<slug>`.
 2. `git fetch origin`, then get a worktree for that branch, created from
    the up-to-date `origin/<base>`, in this order:
-   - Already inside a linked worktree created for this task (e.g. a T3
-     Code or Codex worktree thread: `git rev-parse --git-dir` differs from
-     `--git-common-dir`, and the tree is clean at `origin/<base>` or on
-     this issue's branch): use it, and rename its branch to the Linear name
-     if it's still the harness's placeholder name.
+   - **Already inside a linked worktree** (`git rev-parse --git-dir`
+     differs from `--git-common-dir`; e.g. a T3 Code or Codex worktree
+     thread): this is the worktree. Never create another one from inside
+     it. Then:
+     - On this issue's branch: a previous run, resume (step 0).
+     - No commits of its own (`git log origin/<base>..HEAD` empty) and no
+       uncommitted changes (`git status --porcelain`, ignoring
+       `.autopilot/`): bring it up to date with `git merge --ff-only
+       origin/<base>`, and rename its branch to the Linear name
+       (`git branch -m <branch>`) if it still has the harness's
+       placeholder name.
+     - Anything else (commits or uncommitted changes unrelated to this
+       issue): don't stash, reset, or discard them, and don't start a
+       new worktree. Ask the user (see "Asking the user") whether to
+       build on top of that work, or to stop so they can start a fresh
+       thread.
    - In T3 Code with no worktree yet (`t3_worktree_status`): move this
      thread into one with `t3_worktree_handoff` (`branch` = the Linear
      name, `startFromOrigin: true`, `continuationPrompt: "autopilot
