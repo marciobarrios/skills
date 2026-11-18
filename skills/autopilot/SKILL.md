@@ -269,7 +269,7 @@ The implementer doesn't grade its own work. Run the `sol-loop` skill on
 the local change before pushing, with these autopilot limits that
 override its defaults:
 
-- **Budget: at most 2 rounds**, no extension to 5. Stop after round 1 if
+- **Budget: at most 3 rounds**, no extension to 5. Stop after round 1 if
   it returns only nits.
 - Sol runs as a separate delegated reviewer (sol-loop's `delegate_task`
   route in T3; its native route elsewhere). It sees only the brief and
@@ -278,7 +278,7 @@ override its defaults:
   the verification already run, and the evidence list.
 - After fixes, re-run the affected checks from step 6 (and recapture any
   evidence the fixes changed).
-- If a blocker or should is still open after round 2, or Sol can't be
+- If a blocker or should is still open after round 3, or Sol can't be
   reached: continue to open the PR, but **auto-merge is off** for this run.
   List the open findings in the PR under **Review findings open**.
 - Record the ledger in `.autopilot/state.md` and add sol-loop's line to
@@ -544,7 +544,7 @@ Auto-merge only when **all** are true:
    rebase and `git push --force-with-lease` on this PR's own branch),
    then go back to step 8 (CI, Preview, late reviews). If the update had
    conflicts or changed behaviour, re-run sol-loop on the delta (counts
-   toward its 2 rounds) and re-assess merge-risk.
+   toward its 3 rounds) and re-assess merge-risk.
 3. Pick the merge method: project config first; otherwise the methods the
    repo allows (`gh repo view --json
    squashMergeAllowed,mergeCommitAllowed,rebaseMergeAllowed`) and how
