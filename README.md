@@ -30,11 +30,11 @@ npx skills@latest update -g
 autopilot calls other skills. Install them once per machine:
 
 ```bash
-npx skills@latest add t3dotgg/tstack --skill sol-loop -g
+npx skills@latest add t3dotgg/tstack --skill sol-loop file-pr babysit-pr leaving-pr-comments modernize -g
 npx skills@latest add warpdotdev/common-skills --skill merge-risk -g
 npx skills@latest add vercel-labs/before-and-after -g
 npx skills@latest add vercel-labs/agent-browser -g
 npx skills@latest add imxv/Pretty-mermaid-skills -g
 ```
 
-It also expects the GitHub CLI (`gh`) and, for issue mode, a Linear MCP server.
+It also expects the GitHub CLI (`gh`), `python3` (for babysit-pr's `pr-wait`), and, for issue mode, a Linear MCP server.

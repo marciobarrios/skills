@@ -95,6 +95,14 @@ same task), work in that
 worktree, read both, verify them against reality (`gh pr view`, `git
 log`), and continue from the recorded step.
 
+If that PR has fallen behind its base (`mergeStateStatus` BEHIND or
+DIRTY, or new base commits touch its files), run the `modernize` skill on
+it before continuing. Its verdict decides what happens next:
+**MODERNIZE**: it rebases and pushes, then continue from step 6 (re-verify
+on the new base). **REWORK**: rework it within the issue's scope, then
+continue from step 6. **CLOSE**: don't close it yourself; ask the user
+(see "Asking the user") with modernize's evidence.
+
 ## 1. Read and vet the issue
 
 **Task mode:** there's nothing to fetch. From the user's message (and
@@ -343,9 +351,13 @@ merged PR already solves this issue (`gh pr list --search "<issue-id>"`);
 if one does, ask the user (see "Asking the user"). Then check the whole
 branch once more:
 `git diff --name-only origin/<base>...HEAD` must contain no evidence
-files (same rule as step 5). Then push and create the PR with
-`gh pr create` (never draft unless the `draft` flag was given). Body
-template:
+files (same rule as step 5). Then push and file the PR with the
+`file-pr` skill (never draft unless the `draft` flag was given). Use its
+rules for the title (the repo's title convention, saying why the change
+matters), the problem-first **Summary**, the closing line that names the
+model and harness, the private-details check, and its REST fallback when
+`gh pr create` hits the GraphQL rate limit. This template sets the body's
+sections and wins where the two differ:
 
 ```markdown
 Fixes ABC-123
@@ -370,6 +382,8 @@ Reviewed with sol-loop: <N> rounds with <model>. Sol verdict: <verdict>
 ## Review findings open  <!-- omit when none -->
 ## Assumptions           <!-- omit when none -->
 ## Follow-ups            <!-- omit when none -->
+
+Created with <model> in <harness>.
 
 <!-- autopilot:state step=7 fix-attempts=0 review-rounds=<n> -->
 ```
@@ -397,12 +411,25 @@ Reviewed with sol-loop: <N> rounds with <model>. Sol verdict: <verdict>
 - Comment the PR link on the Linear issue and move it to "In Review"
   (issue mode only).
 - In T3 Code, call `link_pull_request` with the PR URL.
+- **Every GitHub comment, reply, or review you post** in this run (CI
+  gate results, replies to bots, the merge-risk output, revert notes)
+  goes through the `leaving-pr-comments` skill: its attribution note
+  first, then the comment. For the merge-risk output in step 10, the
+  note goes above the verbatim text. Not PR descriptions or commit
+  messages.
 
 ## 8. CI
 
-- Wait for checks. In T3 Code, use `watch_pull_request` and end the turn
-  (you'll be re-invoked; resume from the state file); elsewhere
-  `gh pr checks <n> --watch`.
+- Wait with the `babysit-pr` skill's watcher, one per PR, never a
+  hand-written polling or `sleep` loop. In T3 Code that is
+  `watch_pull_request`: end the turn and resume from the state file when
+  woken. Elsewhere it is babysit-pr's `scripts/pr-wait <n> --until ready`
+  (`--until green` when the repo has no Greptile or Macroscope), run with
+  the Monitor tool in Claude Code. Restart it after every push. Follow
+  babysit-pr's rules for rate limits and handling events. A watcher's
+  "ready" or "green" is news, not the gate: check the rules below and
+  step 10's gate yourself. Autopilot's rules win over babysit-pr's
+  (green means every check, and only step 10 merges).
 - **Green means every check reported, completed, and passed**, required
   or not. Pending, queued, skipped-with-error, or missing (a check that
   ran on recent PRs but hasn't appeared) is not green.
@@ -455,7 +482,11 @@ turns green. Once CI and the Preview are green:
 - If a review bot has a pending check or a requested review on the PR,
   wait for it (up to ~10 minutes).
 - Read all review comments and threads (`gh pr view <n> --comments`,
-  `gh api repos/{owner}/{repo}/pulls/<n>/comments`). For each: fix it
+  `gh api repos/{owner}/{repo}/pulls/<n>/comments`), and handle them with
+  `babysit-pr`'s review rules: verify each finding against the source,
+  act only on what's newer than the latest push, treat CodeRabbit as
+  advisory, and keep the PR at the issue's size (decline cheap-looking
+  extras with a reason and list them as follow-ups). For each: fix it
   (smallest change, counts toward fix attempts, back to step 8), or reply
   with the reason it doesn't apply and resolve it. A human's comment or
   requested changes always means hand off, not merge.
