@@ -1,19 +1,42 @@
 ---
 name: autopilot
-description: Use when the user's message starts with "autopilot" followed by a Linear issue URL or ID (e.g. "autopilot https://linear.app/acme/issue/ABC-123/..." or "autopilot ABC-123"). Implements the issue end to end, verifies it, gets an independent review, attaches evidence to a PR, assesses merge risk, auto-merges when it is safe, and monitors production afterwards.
+description: Use when the user's message starts with "autopilot" followed by a Linear issue URL or ID (e.g. "autopilot https://linear.app/acme/issue/ABC-123/..." or "autopilot ABC-123"), or by a plain description of a small task with no issue (e.g. "autopilot fix the typo in the pricing page footer"). Implements the issue or task end to end, verifies it, gets an independent review, attaches evidence to a PR, assesses merge risk, auto-merges when it is safe, and monitors production afterwards.
 ---
 
 # autopilot
 
-Take one Linear issue from "Todo" to a merged, monitored PR without
-hand-holding:
+Take one Linear issue (or a small task with no issue) from "Todo" to a
+merged, monitored PR without hand-holding:
 
 read → plan → capture *before* → implement → simplify → verify →
 capture *after* →
 review (sol-loop) → PR → CI → Preview → merge-risk → merge or hand off →
 monitor production.
 
-Arguments after the issue are flags in plain words. Honor them:
+## Issue mode and task mode
+
+- **Issue mode**: the first argument is a Linear issue URL or an
+  identifier like `ABC-123`. Everything below applies as written.
+- **Task mode**: anything else. The text after `autopilot` (up to the
+  flags) is the task. There is no Linear issue, and none gets created.
+  Run the same pipeline with the same gates (verification, evidence,
+  sol-loop, CI, Preview, merge-risk, monitoring); only the Linear parts
+  change:
+  - Skip every Linear read and write: fetching, comments, status
+    changes, assigning, `Fixes`/`Refs` lines, reopening.
+  - The **task id** is a short kebab-case slug of the task (≤ 5 words,
+    e.g. `fix-pricing-footer-typo`). Use it wherever this file says
+    "issue ID" for names: branch `autopilot/<slug>`, worktree folder,
+    state file, `gh pr list --search` (search the slug and key words of
+    the task).
+  - Commit messages are plain summaries (`Fix typo in pricing footer`),
+    following the repo's commit style; no issue prefix.
+  - Anywhere this file says to comment on, or ask via, the Linear issue,
+    ask the user instead (see "Asking the user") or put it in the PR.
+  - Follow-ups go in the PR's **Follow-ups** section only; don't create
+    Linear issues for them.
+
+Arguments after the issue or task are flags in plain words. Honor them:
 
 - `no merge` / `draft` — open the PR, never merge.
 - `merge medium` — allow auto-merge at medium risk too.
@@ -62,14 +85,25 @@ places, kept current after every step:
   issue, branch, PR number, current step, fix attempts used, sol-loop
   ledger, evidence files, Preview URL, merge-risk result.
 - A hidden marker in the PR body:
-  `<!-- autopilot:state step=<step> fix-attempts=<n> review-rounds=<n> -->`.
+  `<!-- autopilot:state step=<step> fix-attempts=<n> review-rounds=<n> -->`
+  (task mode adds `task=<slug>`).
 
 When invoked for an issue that already has an open autopilot PR (or a
-worktree on its branch, found with `git worktree list`), work in that
+worktree on its branch, found with `git worktree list`; in task mode,
+an `autopilot/*` branch or PR whose `task=` marker or summary matches the
+same task), work in that
 worktree, read both, verify them against reality (`gh pr view`, `git
 log`), and continue from the recorded step.
 
 ## 1. Read and vet the issue
+
+**Task mode:** there's nothing to fetch. From the user's message (and
+the code it points at), write down the goal, acceptance criteria, and
+out of scope, then apply items 6 and 7 below with the user in place of
+the Linear issue. Task mode is for small fixes: if the size check says
+it should be split, or it's clearly more than a small, self-contained
+change, ask the user whether to continue anyway or to create a Linear
+issue first. Then go to step 2.
 
 1. Parse the identifier (`ABC-123`) from the URL or argument.
 2. Fetch it with the Linear MCP (`get_issue`). If one Linear server can't
@@ -108,6 +142,7 @@ switch branches, stash, reset, or commit in the main checkout.
 
 1. Branch name: the issue's `gitBranchName` from Linear (keeps the
    Linear ↔ GitHub link automatic); fall back to `<id-lowercase>-<slug>`.
+   Task mode: `autopilot/<slug>`.
 2. `git fetch origin`, then get a worktree for that branch, created from
    the up-to-date `origin/<base>`, in this order:
    - **Already inside a linked worktree** (`git rev-parse --git-dir`
@@ -285,7 +320,7 @@ override its defaults:
 - Sol runs as a separate delegated reviewer (sol-loop's `delegate_task`
   route in T3; its native route elsewhere). It sees only the brief and
   the diff. You answer findings and make the fixes yourself.
-- Include in the brief: the Linear issue's goal and acceptance criteria,
+- Include in the brief: the Linear issue's (or task's) goal and acceptance criteria,
   the verification already run, and the evidence list.
 - After fixes, re-run the affected checks from step 6 (and recapture any
   evidence the fixes changed).
@@ -336,7 +371,9 @@ Reviewed with sol-loop: <N> rounds with <model>. Sol verdict: <verdict>
 ```
 
 - `Fixes ABC-123` lets Linear auto-close the issue on merge (`Refs` for a
-  partial slice, see step 1).
+  partial slice, see step 1). Task mode: replace that line with
+  `Task: <the user's request, verbatim>` so reviewers and the
+  merge-risk subagent know what was asked.
 - Attach screenshots/videos with the `before-and-after` skill (its
   `scripts/format.mjs` lives in that skill's directory; run it from the
   repo root so `.autopilot/captures/` paths resolve). Follow its
@@ -353,7 +390,8 @@ Reviewed with sol-loop: <N> rounds with <model>. Sol verdict: <verdict>
   fill colour, so it reads in both themes). New nodes get the class in
   "after"; removed ones get it in "before".
 - Open the rendered PR and confirm media and diagrams display.
-- Comment the PR link on the Linear issue and move it to "In Review".
+- Comment the PR link on the Linear issue and move it to "In Review"
+  (issue mode only).
 - In T3 Code, call `link_pull_request` with the PR URL.
 
 ## 8. CI
@@ -515,8 +553,9 @@ PR body marker (`migrations=<none|pending|applied|auto>`).
 
 **Assess in a fresh subagent.** Spawn a subagent (Claude Code: `Agent`,
 foreground; elsewhere the harness's subagent tool) that has none of the
-implementation context. Give it only: the PR URL, the Linear issue ID,
-and the instruction to run the `merge-risk` skill by reading the PR body,
+implementation context. Give it only: the PR URL, the Linear issue ID
+(task mode: the user's request, verbatim, and a note that there is no
+Linear issue), and the instruction to run the `merge-risk` skill by reading the PR body,
 diff, evidence, checks, review comments, and the issue. Also pass the
 list of bot escalations from step 9 (links only, no commentary of
 yours), and tell it to rule on each one: **justified** (it points at a
@@ -595,7 +634,8 @@ names the production URLs and any extra signals.
    (`git revert <merge-commit>` on a new branch, `Reverts #<n>` in the
    body, link the evidence), let its CI run, and merge it when green
    (reverting to the last good state is the low-risk move). Reopen the
-   Linear issue with a comment explaining what broke. Never revert a PR
+   Linear issue with a comment explaining what broke (task mode: say what
+   broke in the revert PR and the report). Never revert a PR
    with a migration automatically; tell the user instead (those never
    auto-merge anyway).
 6. A problem that already existed before the deploy is not a regression:

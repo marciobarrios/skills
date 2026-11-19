@@ -23,7 +23,7 @@ npx skills@latest update -g
 
 | Skill | What it does |
 |---|---|
-| [autopilot](skills/autopilot/SKILL.md) | `autopilot <Linear issue>`: implements the issue end to end, verifies it, gets an independent review, opens a PR with evidence, checks migrations, assesses merge risk, auto-merges when safe, and monitors production. |
+| [autopilot](skills/autopilot/SKILL.md) | `autopilot <Linear issue>` or `autopilot <small task>`: implements the issue (or a small task with no issue) end to end, verifies it, gets an independent review, opens a PR with evidence, checks migrations, assesses merge risk, auto-merges when safe, and monitors production. |
 
 ## Requirements
 
@@ -37,4 +37,4 @@ npx skills@latest add vercel-labs/agent-browser -g
 npx skills@latest add imxv/Pretty-mermaid-skills -g
 ```
 
-It also expects the GitHub CLI (`gh`) and a Linear MCP server.
+It also expects the GitHub CLI (`gh`) and, for issue mode, a Linear MCP server.
