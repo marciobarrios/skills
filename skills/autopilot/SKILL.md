@@ -302,7 +302,8 @@ On the unchanged base, for visual/interaction/native rows:
 ## 6. Verify and capture "after"
 
 1. Run everything from step 3: typecheck, lint, unit, E2E, simulator.
-   Fix until green. Re-check every acceptance criterion one by one.
+   When it's unclear how to launch the app to check the change, use the
+   `run` skill. Fix until green. Re-check every acceptance criterion one by one.
 2. Capture "after" evidence with the identical viewport, state, and data
    as "before" (same screens, same order, equal heights per
    `before-and-after`).
