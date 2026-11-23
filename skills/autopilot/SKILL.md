@@ -326,9 +326,9 @@ override its defaults:
 
 - **Budget: at most 3 rounds**, no extension to 5. Stop after round 1 if
   it returns only nits.
-- **Model: prefer GPT Sol 6.1** over the latest Sol. Pick the 6.1 entry
-  from `orchestrator_capabilities` if it's offered; otherwise use the
-  latest Sol (sol-loop's default). Record which one ran in the ledger.
+- **Model: always use the latest GPT Sol** offered by
+  `orchestrator_capabilities` (sol-loop's default). Don't pin an older
+  version. Record which one ran in the ledger.
 - Sol runs as a separate delegated reviewer (sol-loop's `delegate_task`
   route in T3; its native route elsewhere). It sees only the brief and
   the diff. You answer findings and make the fixes yourself.
