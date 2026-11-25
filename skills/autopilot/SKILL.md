@@ -344,73 +344,30 @@ override its defaults:
 
 ## 7. Open the PR
 
-Before pushing, `git fetch origin` and rebase onto the latest
-`origin/<base>` (re-run the step 6 checks if the rebase pulled in
-changes), so CI runs on what will merge. Also check that no other open or
-merged PR already solves this issue (`gh pr list --search "<issue-id>"`);
-if one does, ask the user (see "Asking the user"). Then check the whole
-branch once more:
-`git diff --name-only origin/<base>...HEAD` must contain no evidence
-files (same rule as step 5). Then push and file the PR with the
-`file-pr` skill (never draft unless the `draft` flag was given). Use its
-rules for the title (the repo's title convention, saying why the change
-matters), the problem-first **Summary**, the closing line that names the
-model and harness, the private-details check, and its REST fallback when
-`gh pr create` hits the GraphQL rate limit. This template sets the body's
-sections and wins where the two differ:
+File the PR with the `open-pr` skill. It owns the title, the body
+template, media, diagrams, the pre-push checks (rebase onto the latest
+base, duplicate-PR search, no evidence files in the branch), the
+private-details check, and `link_pull_request`. If the rebase pulls in
+changes, re-run the step 6 checks. If it finds another PR that already
+solves this issue, ask the user (see "Asking the user").
 
-```markdown
-Fixes ABC-123
+Pass it the autopilot-only parts:
 
-## Summary
-<1–3 sentences: what changed and why, in user terms>
+- **Issue line:** `Fixes ABC-123` (or `Refs ABC-123` for a partial slice,
+  see step 1). Task mode: `Task: <the user's request, verbatim>`, so
+  reviewers and the merge-risk subagent know what was asked.
+- **Review line:** `Reviewed with sol-loop: <N> rounds with <model>. Sol
+  verdict: <verdict>`, plus **Review findings open** when step 6b left
+  any.
+- **Sections** from this run: Verification (step 6 and 8b), Flow (when a
+  flow row applied), Migrations (step 9b), Verification gaps,
+  Assumptions, Follow-ups.
+- **State marker:** `<!-- autopilot:state step=7 fix-attempts=0
+  review-rounds=<n> -->`.
+- **Draft:** only with the `draft` flag.
 
-<!-- before-and-after block goes here -->
-
-## Flow           <!-- only when a flow row applied -->
-<mermaid before/after>
-
-## Verification
-- [x] <command> — <result>
-- [x] <new test name> — fails on base, passes here
-- [x] <manual/simulator check>
-
-Reviewed with sol-loop: <N> rounds with <model>. Sol verdict: <verdict>
-
-## Migrations            <!-- omit when none; see step 9b -->
-## Verification gaps     <!-- omit when none -->
-## Review findings open  <!-- omit when none -->
-## Assumptions           <!-- omit when none -->
-## Follow-ups            <!-- omit when none -->
-
-Created with <model> in <harness>.
-
-<!-- autopilot:state step=7 fix-attempts=0 review-rounds=<n> -->
-```
-
-- `Fixes ABC-123` lets Linear auto-close the issue on merge (`Refs` for a
-  partial slice, see step 1). Task mode: replace that line with
-  `Task: <the user's request, verbatim>` so reviewers and the
-  merge-risk subagent know what was asked.
-- Attach screenshots/videos with the `before-and-after` skill (its
-  `scripts/format.mjs` lives in that skill's directory; run it from the
-  repo root so `.autopilot/captures/` paths resolve). Follow its
-  video-table workflow for recordings. Uploads go to GitHub's attachment
-  storage, never into the repo.
-- Diagrams: write them with the `pretty-mermaid` skill (diagram type,
-  syntax), render each one locally into `.autopilot/` and look at the
-  result, fixing crowding, clipped labels, or parse errors. Post the
-  **source** in fenced ```` ```mermaid ```` blocks, not the rendered
-  SVG/PNG, so GitHub draws it in the reader's light or dark theme and it
-  stays editable. Keep each diagram to ~15 nodes (split otherwise), use
-  the same node names in before and after, and mark what changed with
-  `classDef changed stroke-width:3px,stroke-dasharray:5 3` (stroke, not
-  fill colour, so it reads in both themes). New nodes get the class in
-  "after"; removed ones get it in "before".
-- Open the rendered PR and confirm media and diagrams display.
-- Comment the PR link on the Linear issue and move it to "In Review"
-  (issue mode only).
-- In T3 Code, call `link_pull_request` with the PR URL.
+Then, in issue mode, comment the PR link on the Linear issue and move it
+to "In Review".
 - **Every GitHub comment, reply, or review you post** in this run (CI
   gate results, replies to bots, the merge-risk output, revert notes)
   goes through the `leaving-pr-comments` skill: its attribution note

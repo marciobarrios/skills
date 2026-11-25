@@ -24,13 +24,14 @@ npx skills@latest update -g
 | Skill | What it does |
 |---|---|
 | [autopilot](skills/autopilot/SKILL.md) | `autopilot <Linear issue>` or `autopilot <small task>`: implements the issue (or a small task with no issue) end to end, verifies it, gets an independent review, opens a PR with evidence, checks migrations, assesses merge risk, auto-merges when safe, and monitors production. |
+| [open-pr](skills/open-pr/SKILL.md) | Opens a PR with a consistent title and body: problem-first summary, verification, before/after media, diagrams, follow-ups. autopilot files its PRs with it, so hand-made and autopilot PRs look the same. |
 
 ## Requirements
 
-autopilot calls other skills. Install them once per machine:
+autopilot and open-pr call other skills. Install them once per machine:
 
 ```bash
-npx skills@latest add t3dotgg/tstack --skill sol-loop file-pr babysit-pr leaving-pr-comments modernize -g
+npx skills@latest add t3dotgg/tstack --skill sol-loop babysit-pr leaving-pr-comments modernize -g
 npx skills@latest add warpdotdev/common-skills --skill merge-risk -g
 npx skills@latest add vercel-labs/before-and-after -g
 npx skills@latest add vercel-labs/agent-browser -g
