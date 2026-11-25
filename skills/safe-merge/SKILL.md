@@ -73,7 +73,11 @@ subagent tool) with none of your context. Give it only:
   diff, evidence, checks, review comments, and the issue, and to rule on
   each escalation: **justified** (it points at a real risk: a sensitive
   area, a ⚠️-level gap, something the evidence doesn't cover) or **not
-  justified**, with a one-line reason.
+  justified**, with a one-line reason,
+- and to check the PR body's **Merge danger** claim (door and blast
+  radius) against the diff: **agree** or **disagree**, with the door and
+  blast radius it would state instead. A missing claim counts as
+  disagree.
 
 Post its output verbatim as a PR comment (the attribution note above it).
 Then reply to each escalation thread with the subagent's ruling, linking
@@ -86,6 +90,9 @@ Merge only when **all** are true:
 - Risk is at or below the threshold (`low`, or `medium` when allowed).
 - No ⚠️ verdict in any category.
 - No bot escalation ruled justified.
+- The change is a **two-way door**, and the subagent agrees with the
+  PR's Merge danger claim. A one-way door, or a claim it disputes,
+  always hands off.
 - Migrations handled (step 2).
 - Every check green (step 1).
 - No unresolved review threads; no human review comments or requested

@@ -302,8 +302,9 @@ Pass it the autopilot-only parts:
 - **Review line:** `Reviewed with sol-loop: <N> rounds with <model>. Sol
   verdict: <verdict>`, plus **Review findings open** when step 6b left
   any.
-- **Sections** from this run: Verification (step 6 and 8b), Flow (when a
-  flow row applied), Migrations (step 9b), Verification gaps,
+- **Sections** from this run: Evidence and Verification (steps 6 and 8b),
+  the flow diagrams as the Summary visual (when a flow row applied),
+  Migrations (step 9b), Verification gaps,
   Assumptions, Follow-ups.
 - **State marker:** `<!-- autopilot:state step=7 fix-attempts=0
   review-rounds=<n> -->`.

@@ -32,6 +32,10 @@ Classify the change and pick **every** row that applies:
 - If a row applies but can't be done (no simulator, the app needs secrets
   you don't have), record it as a **Verification gap** with the reason.
   Never paper over it.
+- Rank evidence the way `open-pr` does: screenshots or recordings when
+  the change is visible; otherwise execution (the test that failed and
+  now passes, or output that changed). Every row should end in a
+  before → after pair.
 - When only part of the table matters to the user (e.g. "just
   screenshots"), do that part.
 
@@ -124,6 +128,7 @@ publish a capture that shows secrets, tokens, or real user PII.
 ## 6. Hand off
 
 Report the list of files in `.autopilot/captures/`, which rows of the
-table they cover, and any gaps. To put them on a PR, use `open-pr` (it
-attaches media with `before-and-after` and posts diagrams as Mermaid
-source).
+table they cover, and any gaps. To put them on a PR, use `open-pr`: media
+and test output go in its **Evidence** section (attached with
+`before-and-after`), and flow diagrams become its **Summary** visual
+(posted as Mermaid source).

@@ -1,6 +1,6 @@
 ---
 name: open-pr
-description: Open a pull request with a consistent title and body (problem-first summary, verification, before/after media, diagrams, follow-ups). Use when the user asks to open, file, create, or ship a PR, and when another skill (such as autopilot) needs to file one.
+description: Open a pull request with a consistent title and body (problem-first summary with a small visual, before/after evidence, verification, merge danger, follow-ups). Use when the user asks to open, file, create, or ship a PR, and when another skill (such as autopilot) needs to file one.
 ---
 
 # open-pr
@@ -43,26 +43,37 @@ readable, and say why the change matters, not how it works:
 
 ## 3. Body
 
-Use this template. Leave out every section marked optional when it has
-nothing in it. Never leave a heading empty or write "N/A".
+**Repo template first.** If the repo has a PR template
+(`.github/pull_request_template.md`, `.github/PULL_REQUEST_TEMPLATE/`,
+or `docs/pull_request_template.md`), keep its headings and checkboxes
+and fill them, putting the sections below under the closest matching
+heading or after the template's own. Otherwise use this template.
+
+Leave out every section marked optional when it has nothing in it. Never
+leave a heading empty or write "N/A". Skip preambles and keep prose
+brief. Use the repo's own domain terms (from `GLOSSARY.md`, `CONTEXT.md`,
+or the code), not new names.
 
 ```markdown
 <issue line>                <!-- optional, see below -->
 
 ## Summary
-<1–3 sentences: the problem, in the user's words, then the fix>
+<1–2 sentences: the problem, in the user's words, then the fix>
 
-<!-- before-and-after block -->   <!-- optional -->
+<one small visual>
 
-## Flow                     <!-- optional -->
-<mermaid before/after>
+## Evidence
+**Before:** <screenshot / output / failing test>
+**After:** <screenshot / output / passing test>
 
 ## Verification
 - [x] <command> — <result>
-- [x] <new test name> — fails on base, passes here
-- [x] <manual / browser / simulator check>
 
 <review line>               <!-- optional, autopilot only -->
+
+## Merge danger
+**Door:** <one-way | two-way> — <why, one line>
+**Blast radius:** <one or two words> — <what could break, one line>
 
 ## Migrations               <!-- optional -->
 ## Verification gaps        <!-- optional -->
@@ -81,9 +92,11 @@ the caller, or the branch name (Linear branches start with the
 lowercased ID, e.g. `abc-123-…`). With no issue, leave the line out;
 autopilot's task mode passes `Task: <request>` instead.
 
-**Summary.** Start with a plain explanation of the problem, based on what
-the user asked for, then say briefly how it's fixed. Don't lead with an
-inventory of what changed:
+### Summary
+
+Start with a plain explanation of the problem, based on what the user
+asked for, then say briefly how it's fixed. Don't lead with an inventory
+of what changed:
 
 > ❌ Removed implicit workspace carry-over from every "new thread" entry
 > point (cmd+n / cmd+shift+o, sidebar v1/v2 buttons, command palette).
@@ -94,41 +107,121 @@ inventory of what changed:
 > existing worktrees. Super unintuitive. Now your preferences always
 > apply.
 
-**Verification.** List only what actually ran on this branch, with its
-result. If nothing has run yet in this session, run the project's
-typecheck, lint, and the tests covering the changed files first. A check
-you couldn't run goes under **Verification gaps**, with the reason. Never
-list a check as passed that you didn't see pass.
+Then add the **smallest visual that makes the change clear**, next to
+the sentence it supports. Usually one; sometimes two; rarely more. Skip
+it only for trivial changes (copy, config, a one-line fix).
 
-**Media.** When screenshots or recordings exist (autopilot keeps them in
-`.autopilot/captures/`), attach them with the `before-and-after` skill.
-Run its `scripts/format.mjs` (in that skill's directory) from the repo
-root so the paths resolve, and use its video-table workflow for
-recordings. Uploads go to GitHub's attachment storage, never into the
-repo. If the user asks for screenshots and none exist, capture them with
-`agent-browser` into `.autopilot/captures/`, first adding `.autopilot/`
-to `$(git rev-parse --git-common-dir)/info/exclude`. Look at every image
-before attaching it.
+- **Logic or an algorithm:** pseudocode.
+- **Runtime control flow:** a call tree.
+  ```text
+  submitForm
+    createSession
+      persistPrompt
+      launchAgent
+    navigateToSession
+  ```
+- **UI structure:** a component tree, with the state and module
+  boundaries that matter.
+  ```text
+  <SessionPage> (apps/web/src/routes/session.tsx)
+    useSessionEvents()
+    <SessionToolbar>
+      <RunSkillButton> (packages/ui)
+  ```
+- **File responsibilities or a broad refactor:** a shallow file tree with
+  a comment per entry.
+- **Interaction between parts, or a flow with branches:** Mermaid (see
+  "Diagrams" below).
+- **What changes inside a shape that already exists:** a `diff` block
+  shaped like the topic, not like the code:
+  ```diff
+   submitForm
+     createSession
+       persistPrompt
+  +    expandSkillMention
+       launchAgent
+  ```
+  The same works for a component tree, a file tree, or pseudocode
+  (`- write content` / `+ if content is unchanged …`).
+- **Mostly new code, or a target shape to copy:** the whole block.
 
-**Diagrams.** For a change to a flow, state machine, or data flow, write
-before and after diagrams with the `pretty-mermaid` skill. Render each
-one locally into `.autopilot/` and look at it; fix crowding, clipped
-labels, or parse errors. Post the **source** in ```` ```mermaid ````
-blocks, not the rendered image, so GitHub draws it in the reader's theme
-and it stays editable. Keep each diagram to about 15 nodes (split it
-otherwise), use the same node names in before and after, and mark what
+Keep only the calls, files, props, states, and boundaries needed to make
+the point.
+
+### Evidence
+
+Proof that the behaviour changed, as a **before → after** pair. Pick the
+best one the environment allows:
+
+1. **Screenshots or recordings**, when the change is visible. The best
+   evidence.
+2. **Execution:** the exact test that failed on the base and passes now
+   (name it, and show what it checks in a line of pseudocode), or the
+   console output, request/response, or numbers that changed.
+3. For a refactor with no behaviour change: the suite green before and
+   after, and say "no behaviour change".
+
+Attach media with the `before-and-after` skill (run its
+`scripts/format.mjs` from the repo root so `.autopilot/captures/` paths
+resolve; use its video-table workflow for recordings). Uploads go to
+GitHub's attachment storage, never into the repo. When the user asks for
+evidence and none exists, get it with `capture-evidence`. Look at every
+image before attaching it. With no before → after available, leave the
+section out and say why under **Verification gaps**.
+
+### Verification
+
+The checks that ran on this branch, with their result. If nothing has run
+yet in this session, run the project's typecheck, lint, and the tests
+covering the changed files first. A check you couldn't run goes under
+**Verification gaps**, with the reason. Never list a check as passed that
+you didn't see pass.
+
+### Merge danger
+
+State it plainly, so a reviewer can disagree with it and knows where to
+spend their attention.
+
+- **Door:** **two-way** when reverting the merge fully undoes it;
+  **one-way** when it doesn't: destructive or data-changing migrations,
+  deleted data, published APIs or packages others now depend on, emails
+  or webhooks sent, external state written. Say why in one line.
+- **Blast radius:** what could break if it's wrong, and for whom: one
+  page, a shared component, every logged-in user, API consumers, mobile
+  layout, build or deploy. One or two words, then one line on the likely
+  ramifications. Think about what else uses the changed code, not just
+  what the PR set out to change.
+
+A one-way door must also show up under **Migrations** or
+**Assumptions**, with its rollback (or "no rollback").
+
+### Diagrams
+
+Write Mermaid with the `pretty-mermaid` skill. Render each diagram
+locally into `.autopilot/` and look at it; fix crowding, clipped labels,
+or parse errors. Post the **source** in ```` ```mermaid ```` blocks, not
+the rendered image, so GitHub draws it in the reader's theme and it stays
+editable. Keep each diagram to about 15 nodes (split it otherwise). For
+before/after diagrams, use the same node names in both and mark what
 changed with `classDef changed stroke-width:3px,stroke-dasharray:5 3`
-(new nodes in "after", removed nodes in "before").
+(new nodes in "after", removed nodes in "before"). Before/after flow
+diagrams from `capture-evidence` go in the **Summary** as its visual.
 
-**Follow-ups.** Unrelated problems you noticed, and extras you declined
-to keep the PR small. One line each.
+### Follow-ups
 
-**Credit line.** End with the public model name and harness that made the
+Unrelated problems you noticed, and extras you declined to keep the PR
+small. One line each.
+
+### Credit line
+
+End with the public model name and harness that made the
 changes, e.g. `Created with <model> in <harness>.` Include subagent models
 that wrote part of the change. Use the model name the harness reports; if
 it's unavailable, name the harness without guessing a model.
 
-**Autopilot-only parts.** The review line (`Reviewed with sol-loop: …`),
+### Autopilot-only parts
+
+The review line (`Reviewed with sol-loop: …`),
 **Review findings open**, and the `<!-- autopilot:state … -->` marker come
 from the caller. Put them where the template shows; don't add them
 yourself on a regular PR.
@@ -157,4 +250,10 @@ asked to watch or babysit the PR, continue with the `babysit-pr` skill.
 
 The title, summary, credit, and filing rules are adapted from the
 `file-pr` skill in [t3dotgg/tstack](https://github.com/t3dotgg/tstack)
-(MIT, Copyright (c) 2026 Theo Browne).
+(MIT, Copyright (c) 2026 Theo Browne). The Evidence ranking and the Merge
+danger section are adapted from the `pr` skill in
+[mattpocock/skills](https://github.com/mattpocock/skills) (MIT, Copyright
+(c) 2026 Matt Pocock). The Summary's menu of visuals comes from Dex
+Horthy's `show-me` skill in
+[humanlayer/skills](https://github.com/humanlayer/skills) (MIT, Copyright
+(c) 2026 HumanLayer), by way of Matt's `pr`.
