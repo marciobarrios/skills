@@ -198,87 +198,33 @@ switch branches, stash, reset, or commit in the main checkout.
    free port (step 2b), opening the app at that bundler URL. Confirm the
    app shows this worktree's change before capturing anything.
 - **Evidence never gets committed.** All captures, recordings, rendered
-  diagrams, logs, and browser state go under `.autopilot/` (captures in
-  `.autopilot/captures/`). Before creating anything there, make sure git
-  ignores it locally without touching tracked files:
-
-  ```bash
-  exclude="$(git rev-parse --git-common-dir)/info/exclude"
-  grep -qxF '.autopilot/' "$exclude" || echo '.autopilot/' >> "$exclude"
-  ```
-
-  Never write evidence anywhere else in the repo (not `captures/`,
-  `test-results/`, `screenshots/`, the repo root). Tool output that lands
-  elsewhere by default (Playwright `test-results/`, `playwright-report/`)
-  must already be gitignored; if it isn't, add it to the same exclude file.
+  diagrams, logs, and browser state go under `.autopilot/`, following the
+  `capture-evidence` skill's "Where evidence lives" rules (including the
+  local git exclude).
 
 ## 2b. Local servers
 
-Other agents and worktrees may be running dev servers at the same time, so
-never assume a port belongs to this branch.
-
-- Get the URL, never guess it: use the dev URL from project config, or the
-  URL the dev command prints once it's ready (Next.js `Local:`, Vite,
-  portless, Expo). Don't hardcode `localhost:3000`.
-- Before starting a server, check whether its port is taken
-  (`lsof -iTCP:<port> -sTCP:LISTEN`). If it is and you didn't start it,
-  don't use it and don't kill it: start yours on a free port (`PORT=<n>`
-  or the framework's `--port` flag) and use that URL.
-- Never test or capture against a server you didn't start in this run.
-  After starting one, confirm it serves this checkout (e.g. the change is
-  visible, or the process's cwd is this worktree) before trusting it.
-- Test runners that reuse a running server (Playwright
-  `reuseExistingServer`, Cypress `baseUrl`) can silently hit another
-  worktree's app. When the default port is busy, point the runner at your
-  own server (base URL env var or CLI flag) or run it with `CI=1` where
-  that disables reuse, and say which in the PR.
-- Stop every server, Metro bundler, and simulator you started before the
-  final report. Leave everyone else's alone.
+Every dev server, Metro bundler, or simulator you start in this run
+follows `capture-evidence`'s "Local servers" rules: never assume a port
+is yours, never test against a server you didn't start, and stop yours
+before the final report. If you pointed a test runner at your own server
+because the default port was busy, say how in the PR.
 
 ## 3. Plan verification and evidence
 
-Classify the change, then pick **every** row that applies. Decide this
-*before* touching code, because "before" evidence must be captured on the
-unchanged base.
-
-| Change type | Verification (proof it works) | Evidence (proof for reviewers) |
-|---|---|---|
-| Visual web UI | Run the app; check desktop + mobile viewports; light/dark if supported | Before/after screenshots via `agent-browser`, published with `before-and-after` |
-| Interaction / animation / multi-step UX | E2E test of the interaction when the project has an E2E setup (Playwright, Cypress, Maestro, XCUITest) | Screen recording (before/after when the old behavior exists) |
-| iOS / native app | Build and run on the iOS Simulator; XCTest/XCUITest when present | Simulator screenshots or recording, before/after |
-| Flow / state machine / architecture / data flow | Unit or integration tests over each branch of the flow | Mermaid diagram of the flow (`pretty-mermaid`), before and after |
-| Logic / bug fix | Unit test that fails on the base and passes with the fix (write it first) | Test name + failing-then-passing output |
-| API / backend | Integration test; real request against the local server | Request/response transcript (redact secrets) |
-| Performance | Benchmark or profile on base vs branch | Numbers table, same machine and conditions |
-| Refactor (no behavior change) | Existing suite green; add characterization tests where coverage is thin | Test output + explicit "no behavior change" statement |
-| Data migration / schema | Run migration up and down locally against a disposable DB | Migration output; note rollback path |
-
-Rules:
+Plan with the `capture-evidence` skill's table, picking **every** row
+that applies. Decide this *before* touching code, because "before"
+evidence must be captured on the unchanged base.
 
 - Always run the project's existing typecheck, lint, and test commands.
-- Prefer a new automated test over manual checking whenever the project
-  has a test setup for that layer. Don't introduce a new test framework
-  just for this issue unless the issue asks for it.
-- If a row applies but can't be done (no simulator, app needs secrets you
-  don't have), say so explicitly in the PR under **Verification gaps**.
-  A gap counts against merge-risk; never paper over it.
+- Don't introduce a new test framework unless the issue asks for it.
+- A row that can't be done goes in the PR under **Verification gaps**.
+  A gap counts against merge-risk.
 
 ## 4. Capture "before"
 
-On the unchanged base, for visual/interaction/native rows:
-
-- Web: start the dev server (use the `run` skill if unsure how), then use
-  `agent-browser` (load its core instructions with
-  `agent-browser skills get core --full`) to screenshot the exact screens
-  and states the issue touches, at desktop and mobile widths. For bugs,
-  capture the bug reproducing.
-- iOS: in T3 Code, use the device tools (`device_list` → `device_open` →
-  its `agent-device` command); elsewhere use `xcrun simctl io booted
-  screenshot` / `recordVideo`.
-- Save to `.autopilot/captures/` with whitespace-free names:
-  `desktop-before.png`, `mobile-before.png`, `flow-before.mp4`.
-- For flow rows, write the "before" Mermaid diagram (with `pretty-mermaid`,
-  see step 7) from reading the current code now, while it is still the base.
+Capture "before" with `capture-evidence` now, in this worktree, while it
+is still the unchanged base (its "change not written yet" case).
 
 ## 5. Implement
 
@@ -312,11 +258,8 @@ On the unchanged base, for visual/interaction/native rows:
 1. Run everything from step 3: typecheck, lint, unit, E2E, simulator.
    When it's unclear how to launch the app to check the change, use the
    `run` skill. Fix until green. Re-check every acceptance criterion one by one.
-2. Capture "after" evidence with the identical viewport, state, and data
-   as "before" (same screens, same order, equal heights per
-   `before-and-after`).
-3. Look at every capture yourself (read the image). If it doesn't clearly
-   show the change, recapture.
+2. Capture "after" with `capture-evidence`: identical viewport, state,
+   data, and order as "before", and look at every capture yourself.
 
 ## 6b. Independent review (sol-loop)
 
