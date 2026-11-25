@@ -525,8 +525,10 @@ you notice it, not at the end: one line each, with what you saw, where
   - Team and project: the current issue's. In task mode, the team the
     project config names (`Linear team:` in `AUTOPILOT.md`), or the team
     the repo's recent issues use (branch names and `Fixes` lines in
-    `git log`). With no known team, don't guess: keep it in the PR and
-    the report, and say why it wasn't filed.
+    `git log`). With no known team, or no Linear tools in this session,
+    don't guess or stop: keep it in the PR and the report, and say why
+    it wasn't filed. That counts as triaged, so it never blocks the
+    merge.
   - Search first (`list_issues` with key words); when a match exists,
     comment on it instead of filing a duplicate.
   - Status Backlog, unassigned, related to the current issue. Priority
