@@ -399,153 +399,59 @@ turns green. Once CI and the Preview are green:
 
 ## 9b. Migrations
 
-Migrations are easy to miss in a PR, and the user applies them by hand,
-usually **before** merging. Never apply a migration to production or any
-shared database yourself; your job is to find them, check them, and make
-sure the user can't miss them.
+Run the `check-migrations` skill on the PR. No migrations: skip to step
+10. Its rules hold here: never apply a migration yourself, and fix an ORM
+schema change that has no matching migration (back to step 6). For a
+"not safe in either order" verdict, restructure into backward-compatible
+steps when that's a small change (expand now, contract in a follow-up
+issue) and re-run from step 6; otherwise ask the user (see "Asking the
+user").
 
-1. **Detect.** List every migration the branch adds or changes:
-   `git diff --name-only origin/<base>...HEAD` against the project
-   config's migration paths, or the usual ones (`supabase/migrations/`,
-   `prisma/migrations/`, `drizzle/`, `migrations/`, `db/migrate/`,
-   `alembic/versions/`). Also check whether the ORM schema changed
-   (`schema.prisma`, Drizzle schema files) without a matching migration;
-   that's a bug to fix, not to report. No migrations: skip to step 10.
-1b. **Check for automatic apply.** Find out whether something already
-   applies migrations on merge or deploy: project config first, then
-   `.github/workflows/` (and other CI config) for steps like `supabase db
-   push`, `supabase migration up`, `prisma migrate deploy`, `drizzle-kit
-   migrate`, `knex migrate:latest`, `rails db:migrate`, `alembic upgrade`;
-   the build or deploy scripts in `package.json`, `vercel.json` /
-   `vercel.ts` (e.g. `prisma migrate deploy && next build`); and platform
-   integrations (Supabase GitHub integration, Neon/Vercel). Note *when*
-   it runs (before the new code deploys, in parallel with it, or after)
-   and whether it needs a manual approval (e.g. a protected GitHub
-   environment). If it's automatic and needs no approval, the order is
-   fixed by that setup: step 3 checks that this order is safe, and step 6
-   doesn't ask you to apply anything.
-2. **Check production's state, read-only**, when there's a way (project
-   config, Supabase MCP `list_migrations` / `list_tables`, Neon MCP
-   `describe_table_schema`): which migrations are already applied, whether
-   older migrations from *other* PRs are still pending (call those out,
-   they must go first), and the size of the tables touched.
-3. **Assess safety in both orders.** Production keeps running the old code
-   until the merge deploys, so:
-   - *Before merge:* does the **old** code still work against the **new**
-     schema? Additive changes are usually safe: new tables, nullable
-     columns or columns with a default, new indexes, functions, views.
-     Drops, renames, type changes, new `NOT NULL` without a default, or
-     tighter constraints/RLS that the old code violates are not.
-   - *After merge:* does the **new** code work against the **old** schema
-     during the deploy window?
-   - *Cost:* locks and rewrites on large tables (index without
-     `CONCURRENTLY`, column type change, backfills), duration, statements
-     that can't run in a transaction.
-   - *Security:* RLS, grants, and policies that widen access.
-   - *Rollback:* is there a down migration or a written manual rollback,
-     and does it lose data?
-4. **Verdict**, one of:
-   - **Applied automatically** (step 1b found an automatic apply and its
-     order is safe per step 3). If that order isn't safe (e.g. the
-     workflow migrates after the deploy, but the new code needs the new
-     schema), treat it like "not safe in either order" below.
-   - **Run before merge** (the default when safe: matches how the user
-     works).
-   - **Run after merge** (new code tolerates the old schema, but the old
-     code would break on the new one).
-   - **Not safe in either order**: restructure into backward-compatible
-     steps (expand now, contract in a follow-up issue) when that's a small
-     change, then re-run checks from step 6; otherwise ask the user (see
-     "Asking the user").
-5. **Write it in the PR** under **Migrations**: each file, what it does in
-   one line, the verdict and why, lock/duration risk, rollback, pending
-   migrations from other PRs, and the exact command to apply it.
-6. **Applied automatically:** don't ask. Say so in the PR's
-   **Migrations** section, naming the workflow or script that applies
-   it, then continue to step 10. After the merge (step 10b), confirm the
-   apply ran and succeeded (the workflow run or deploy logs, plus the
-   read-only check from step 2 when possible). A failed or missing apply
-   is a regression: tell the user right away with the question tool, and
-   don't revert automatically (step 10b's rule for migrations).
-   **Otherwise, ask the user**, once CI, the Preview, and late reviews are green (so
-   it is the last thing between the PR and the merge), with the question
-   tool (see "Asking the user"). Include the PR link, the migration files,
-   the verdict with its reason in plain words, the exact command, and the
-   rollback. Options, recommended first:
-   - verdict *before merge*: "I applied it, continue to merge" / "Leave
-     the PR open, I'll apply it later" / "Don't apply, it needs changes";
-   - verdict *after merge*: "Merge now, I'll apply it right after" /
-     "Leave the PR open".
-7. **After "applied"**, verify it read-only when you can (step 2's
-   method) before merging; if you can't verify, say so in the PR. After
-   an after-merge verdict, merge, then remind the user in the final
-   report and wait for their confirmation before step 10b's checks.
+- **Applied automatically:** don't ask; continue to step 10. After the
+  merge, step 10b confirms the apply ran and succeeded (check-migrations
+  step 7). A failed or missing apply is a regression: tell the user right
+  away with the question tool, and don't revert automatically.
+- **Run before / after merge:** ask the user with `safe-merge`'s
+  migration question, once CI, the Preview, and late reviews are green,
+  so it's the last thing between the PR and the merge. After "applied",
+  verify it read-only when you can and say in the PR if you couldn't.
+  After an after-merge verdict, merge, then remind the user in the final
+  report and wait for their confirmation before step 10b's checks.
 
 Record the verdict and the user's answer in `.autopilot/state.md` and the
 PR body marker (`migrations=<none|pending|applied|auto>`).
 
 ## 10. Merge-risk and merge
 
-**Assess in a fresh subagent.** Spawn a subagent (Claude Code: `Agent`,
-foreground; elsewhere the harness's subagent tool) that has none of the
-implementation context. Give it only: the PR URL, the Linear issue ID
-(task mode: the user's request, verbatim, and a note that there is no
-Linear issue), and the instruction to run the `merge-risk` skill by reading the PR body,
-diff, evidence, checks, review comments, and the issue. Also pass the
-list of bot escalations from step 9 (links only, no commentary of
-yours), and tell it to rule on each one: **justified** (it points at a
-real risk: a sensitive area, a ⚠️-level gap, something the evidence
-doesn't cover) or **not justified**, with a one-line reason. Post its
-output verbatim as a PR comment. Then reply to each escalation thread
-with the subagent's ruling, linking that comment, and resolve the ones
-ruled not justified.
+Before calling the merge step, make sure the PR is up to date with its
+base. If it isn't, update the branch (`gh pr update-branch <n>`, or
+rebase and `git push --force-with-lease` on this PR's own branch) and go
+back to step 8 (CI, Preview, late reviews). If the update had conflicts
+or changed behaviour, re-run sol-loop on the delta (counts toward its 3
+rounds).
 
-Auto-merge only when **all** are true:
+Then run the `safe-merge` skill on the PR. It assesses merge-risk in a
+fresh subagent, rules on bot escalations, applies its gate, refuses a
+stale branch, and merges pinned to the verified commit. Pass it:
 
-- Risk is **low** (or **medium** with the `merge medium` flag).
-- No ⚠️ verdict in any category.
-- sol-loop finished with no open blocker or should (step 6b).
-- No bot escalation (step 9) ruled justified by the merge-risk subagent.
-- No migrations, migrations applied automatically in a safe order (step
-  9b), or the user answered step 9b's question: applied (and
-  verified when possible) for a before-merge verdict, or "merge now" for
-  an after-merge one.
-- Every check green (step 8); Preview check passed or was skipped for a
-  stated reason; no unresolved review threads; no human review comments
-  or requested changes.
-- No `no merge` / `draft` flag, and the project config doesn't forbid it
-  for the touched paths.
-- None of these were touched (always hand off, whatever the score): auth
-  or permissions, payments, secrets/credentials, PII handling, destructive
-  or irreversible data migrations, production infra/deploy config,
-  dependency major-version bumps, **any new dependency**.
+- the Linear issue ID (task mode: the user's request, verbatim, and a
+  note that there is no Linear issue),
+- the bot escalations from step 9 (links only),
+- the threshold: `low`, or `medium` with the `merge medium` flag,
+- the migration verdict and the user's answer from step 9b,
+- autopilot's extra conditions, each a gate item:
+  - sol-loop finished with no open blocker or should (step 6b),
+  - the Preview check passed or was skipped for a stated reason (step 8b),
+  - no `no merge` / `draft` flag.
 
-**Never merge a stale branch.** Immediately before merging:
+With `no merge` / `draft`, still run it for the assessment and the
+merge-risk comment, but it won't merge. If safe-merge updates the branch
+itself because the base moved again, go back to step 8 before letting it
+merge. A dequeued PR or a failed merge-queue check counts as a CI failure
+(step 8).
 
-1. `git fetch origin` and check the PR is up to date with its base
-   (`gh pr view <n> --json mergeStateStatus,headRefOid`; `git merge-base
-   --is-ancestor origin/<base> HEAD`).
-2. If the base moved: update the branch (`gh pr update-branch <n>`, or
-   rebase and `git push --force-with-lease` on this PR's own branch),
-   then go back to step 8 (CI, Preview, late reviews). If the update had
-   conflicts or changed behaviour, re-run sol-loop on the delta (counts
-   toward its 3 rounds) and re-assess merge-risk.
-3. Pick the merge method: project config first; otherwise the methods the
-   repo allows (`gh repo view --json
-   squashMergeAllowed,mergeCommitAllowed,rebaseMergeAllowed`) and how
-   recent PRs were merged (`gh pr list --state merged --limit 5`).
-4. Merge pinned to the exact commit that was verified, so nothing newer
-   slips in:
-   `gh pr merge <n> --<method> --delete-branch --match-head-commit <sha>`.
-   If GitHub rejects it as out of date, go back to 2. If the repo uses a
-   merge queue or auto-merge (`gh pr merge` queues it or enables
-   auto-merge instead of merging), keep watching until GitHub reports the
-   PR as merged; if it gets dequeued or the queue's checks fail, treat
-   that as a CI failure (step 8).
-
-Merge through branch protection as configured. Confirm the merge landed (`gh pr view <n> --json state,mergedAt,
-mergeCommit`). Otherwise do **not** merge: leave the PR open, ready for
-review, and skip step 10b.
+If safe-merge doesn't merge, leave the PR open, ready for review, and
+skip step 10b.
 
 ## 10b. Monitor production
 
