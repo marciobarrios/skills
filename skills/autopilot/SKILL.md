@@ -349,30 +349,16 @@ to "In Review".
 
 ## 8b. Preview check
 
-Run when the PR gets a Vercel Preview deployment; skip (and say so in the
-PR) when it doesn't. Project config sets the depth; the default is `full`.
+Run the `vercel-watch` skill in Preview mode on the PR, with the issue's
+(or task's) acceptance criteria and the pages it touches. If it skips
+(no Vercel Preview, or depth `skip`), say so in the PR.
 
-1. Find the Preview URL: the Vercel check or bot comment on the PR
-   (`gh pr checks <n>`, `gh pr view <n> --comments`), or the Vercel MCP
-   (`list_deployments` for the branch). Wait for it to be Ready like any
-   other check. A failed Vercel build is a CI failure (step 8).
-2. If it's protected (401/403 or a Vercel login page), follow
-   `agent-browser skills get protected-vercel-deployments --full`. Never
-   put bypass tokens or OIDC tokens in the PR, captures, or logs.
-3. With `agent-browser`, open every page the issue touches, at mobile and
-   desktop widths:
-   - no console errors or failed requests that aren't on production too,
-   - each acceptance criterion holds,
-   - the main interaction works (`full` depth only; `read-only` depth
-     loads and inspects pages but never submits forms, signs in, or
-     triggers writes).
-4. Evidence: when production is reachable, prefer production as "before"
-   and the Preview as "after" (same build type), retaking the captures
-   from step 6 and replacing them in the PR's before-and-after block.
-   Add the Preview URL to the PR's **Verification** list.
-5. A real failure here blocks merge: fix, push, and redo CI and this step
-   (counts toward the 3 fix attempts). Something that also fails on
-   production is a pre-existing issue: note it as a follow-up.
+- A failed Preview build is a CI failure (step 8).
+- A real failure blocks merge: fix, push, and redo CI and this step
+  (counts toward the 3 fix attempts).
+- Its production-vs-Preview captures replace step 6's in the PR's
+  before-and-after block.
+- Pre-existing problems become follow-ups.
 
 ## 9. Late reviews
 
@@ -455,32 +441,19 @@ skip step 10b.
 
 ## 10b. Monitor production
 
-After a merge, check production before declaring success. Project config
-names the production URLs and any extra signals.
+After a merge, run `vercel-watch` in Production mode on the PR before
+declaring success.
 
-1. Wait for the production deployment of the merge commit (Vercel MCP
-   `list_deployments` / `get_deployment`, or the commit's deployment
-   status) to be Ready. A failed production build is a regression.
-2. Public smoke check with `agent-browser`: load the pages the issue
-   touched, plus the home page; no console errors or failed requests.
-3. Logs: Vercel `get_runtime_errors` / `get_runtime_logs` for the project,
-   for ~15 minutes after the deploy, compared with the hour before it.
-   Add any signals the project config lists (e.g. Supabase MCP `query_logs` and `get_advisors`).
-4. Logged-in check, only when the project config defines a production
-   test account: load its saved browser state from outside the repo
-   (path from project config), visit the touched pages read-only, and
-   never create, edit, or delete data. If the saved session has expired,
-   skip this step and tell the user to refresh it; never type credentials.
-5. **On a regression caused by this PR:** open a revert PR immediately
-   (`git revert <merge-commit>` on a new branch, `Reverts #<n>` in the
-   body, link the evidence), let its CI run, and merge it when green
-   (reverting to the last good state is the low-risk move). Reopen the
-   Linear issue with a comment explaining what broke (task mode: say what
-   broke in the revert PR and the report). Never revert a PR
-   with a migration automatically; tell the user instead (those never
-   auto-merge anyway).
-6. A problem that already existed before the deploy is not a regression:
-   note it as a follow-up.
+**On a regression caused by this PR**, revert right away: this request
+is the permission vercel-watch asks for. Open a revert PR (`git revert
+<merge-commit>` on a new branch, `Reverts #<n>` in the body, link the
+evidence), let its CI run, and merge it when green. Reopen the Linear
+issue with a comment explaining what broke (task mode: say what broke in
+the revert PR and the report). Never revert a PR with a migration
+automatically; tell the user instead (those never auto-merge anyway).
+
+A failed or missing automatic migration apply is a regression too: tell
+the user right away with the question tool, and don't revert.
 
 ## 11. Report
 

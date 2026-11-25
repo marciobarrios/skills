@@ -28,6 +28,7 @@ npx skills@latest update -g
 | [capture-evidence](skills/capture-evidence/SKILL.md) | Plans and captures before/after evidence for a change (screenshots, recordings, Mermaid flow diagrams, failing-then-passing tests), capturing "before" on the base without touching your working tree. autopilot uses it for every run. |
 | [check-migrations](skills/check-migrations/SKILL.md) | Finds a PR's database migrations and checks them: automatic apply, production's state (read-only), safety before and after merge, locks, security, rollback. Gives a verdict and the exact command; never applies anything. |
 | [safe-merge](skills/safe-merge/SKILL.md) | Merges a PR only when it's safe: merge-risk in a fresh subagent, a strict gate (all checks green, no open threads, no sensitive areas, migrations handled), no stale branches, merged pinned to the verified commit. |
+| [vercel-watch](skills/vercel-watch/SKILL.md) | Checks a Vercel deployment for a change. Preview mode checks a PR's Preview in the browser before merge; Production mode watches the deploy after merge (smoke check, runtime errors and logs vs. before) and flags regressions. |
 
 ## Requirements
 
