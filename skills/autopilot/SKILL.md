@@ -10,8 +10,8 @@ merged, monitored PR without hand-holding:
 
 read → plan → capture *before* → implement → simplify → verify →
 capture *after* →
-review (sol-loop) → PR → CI → Preview → merge-risk → merge or hand off →
-monitor production.
+review (sol-loop) → PR → CI → Preview → file follow-ups → merge-risk →
+merge or hand off → monitor production.
 
 ## Issue mode and task mode
 
@@ -33,8 +33,9 @@ monitor production.
     following the repo's commit style; no issue prefix.
   - Anywhere this file says to comment on, or ask via, the Linear issue,
     ask the user instead (see "Asking the user") or put it in the PR.
-  - Follow-ups go in the PR's **Follow-ups** section only; don't create
-    Linear issues for them.
+  - Follow-ups still go through step 9c. File them in Linear when the
+    repo has a known Linear team (see "Follow-ups"); otherwise they stay
+    in the PR and the report.
 
 Arguments after the issue or task are flags in plain words. Honor them:
 
@@ -83,7 +84,8 @@ places, kept current after every step:
 
 - `.autopilot/state.md` in the worktree (excluded from git, see step 2):
   issue, branch, PR number, current step, fix attempts used, sol-loop
-  ledger, evidence files, Preview URL, merge-risk result.
+  ledger, follow-up ledger (see "Follow-ups"), evidence files, Preview
+  URL, merge-risk result.
 - A hidden marker in the PR body:
   `<!-- autopilot:state step=<step> fix-attempts=<n> review-rounds=<n> -->`
   (task mode adds `task=<slug>`).
@@ -235,8 +237,8 @@ is still the unchanged base (its "change not written yet" case).
 - Tests first for logic and bug fixes.
 - No drive-by refactors: don't clean up code the change doesn't need.
   Edits outside the diff that serve the change (see the simplify pass
-  below) are fine. If you notice unrelated problems, list them as
-  follow-ups in the PR (optionally create Linear issues for them).
+  below) are fine. If you notice unrelated problems, add them to the
+  follow-up ledger the moment you notice them (see "Follow-ups").
 - After the change works, run the `simplify` skill once on this branch's
   diff. Edits outside the diff are fine when they serve the change
   (reusing or extracting helpers/constants, adjusting callers of what you
@@ -408,6 +410,14 @@ user").
 Record the verdict and the user's answer in `.autopilot/state.md` and the
 PR body marker (`migrations=<none|pending|applied|auto>`).
 
+## 9c. File follow-ups
+
+Do this before the merge, so nothing depends on the thread surviving
+past it. Triage every entry in the follow-up ledger (see "Follow-ups"):
+file it, block on it, or drop it with a reason. Then rewrite the PR's
+**Follow-ups** section from the ledger, with a link to each filed issue.
+An empty ledger is fine: write "None".
+
 ## 10. Merge-risk and merge
 
 Before calling the merge step, make sure the PR is up to date with its
@@ -429,7 +439,9 @@ stale branch, and merges pinned to the verified commit. Pass it:
 - autopilot's extra conditions, each a gate item:
   - sol-loop finished with no open blocker or should (step 6b),
   - the Preview check passed or was skipped for a stated reason (step 8b),
-  - no `no merge` / `draft` flag.
+  - no `no merge` / `draft` flag,
+  - step 9c is done: no follow-up left untriaged, and no blocking
+    follow-up waiting on the user.
 
 With `no merge` / `draft`, still run it for the assessment and the
 merge-risk comment, but it won't merge. If safe-merge updates the branch
@@ -456,6 +468,10 @@ automatically; tell the user instead (those never auto-merge anyway).
 A failed or missing automatic migration apply is a regression too: tell
 the user right away with the question tool, and don't revert.
 
+Anything new this step finds that is not this PR's regression (a
+pre-existing error, a flaky check) goes in the follow-up ledger and is
+filed now, the same way as in step 9c.
+
 ## 11. Report
 
 End with a short report to the user:
@@ -468,7 +484,8 @@ End with a short report to the user:
   human should look at.
 - sol-loop rounds and outcome; verification run, evidence attached, any
   gaps or assumptions.
-- Follow-ups created.
+- Follow-ups: each filed issue as a link, and each one not filed with
+  its reason. Never a follow-up that exists only in this report.
 - Each decision you made for the user with a default instead of asking
   (one line each), so they can review it.
 
@@ -480,6 +497,48 @@ happened, and say where it is in the report.
 
 In T3 Code, `unwatch_pull_request` before the final handback, and before
 any earlier stop (hand off, question, blocked issue) on a PR you watch.
+
+## Follow-ups
+
+A follow-up is work this run found but did not do: an unrelated bug, a
+flaky test, a cleanup that `simplify` left alone, a bot suggestion
+declined as out of scope, a Verification gap worth closing, a
+pre-existing problem the Preview or production check saw. Follow-ups
+get lost when they live only in a PR description or a final message, so
+every one goes through the ledger.
+
+**Record.** Add it to the follow-up ledger in `.autopilot/state.md` when
+you notice it, not at the end: one line each, with what you saw, where
+(file and line, test name, URL), and how you know.
+
+**Triage** (step 9c). Each entry ends up in exactly one of these:
+
+- **Blocking.** It should be settled before this PR ships: this PR
+  causes it or makes it worse, it is a security or data-loss risk, it
+  breaks production, or it leaves an acceptance criterion unmet. That is
+  not a follow-up: fix it in this PR when it is in scope (back to step
+  6). Otherwise auto-merge is off; ask the user (see "Asking the user")
+  with the options "file it and merge", "fix it in this PR", and "leave
+  the PR open", with your recommendation first.
+- **File.** Everything else that is real work. Create a Linear issue for
+  each one:
+  - Team and project: the current issue's. In task mode, the team the
+    project config names (`Linear team:` in `AUTOPILOT.md`), or the team
+    the repo's recent issues use (branch names and `Fixes` lines in
+    `git log`). With no known team, don't guess: keep it in the PR and
+    the report, and say why it wasn't filed.
+  - Search first (`list_issues` with key words); when a match exists,
+    comment on it instead of filing a duplicate.
+  - Status Backlog, unassigned, related to the current issue. Priority
+    Low for cleanups; leave it unset otherwise.
+  - Write it for a reader who never saw this run: what happens, where,
+    how to reproduce, acceptance criteria. Agent details (commands,
+    files) go in a collapsible "Agent notes" section.
+  - Project rules about which issues a PR may mention still apply.
+- **Drop.** Not worth an issue (a nit, already covered by an issue you
+  found). Write the reason in the ledger; it shows in the report.
+
+Filing is within this skill's grant: don't ask before filing.
 
 ## Asking the user
 
@@ -502,6 +561,7 @@ Ask only when you cannot continue alone:
   the repo, closing a PR, or force-pushing any branch other than this
   PR's own.
 - Another PR makes this one obsolete.
+- A blocking follow-up you can't fix in this PR (see "Follow-ups").
 
 Decide everything else yourself with sensible defaults, and list those
 decisions in the PR (**Assumptions**) and the report (step 11).

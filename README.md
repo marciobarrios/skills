@@ -23,7 +23,7 @@ npx skills@latest update -g
 
 | Skill | What it does |
 |---|---|
-| [autopilot](skills/autopilot/SKILL.md) | `autopilot <Linear issue>` or `autopilot <small task>`: implements the issue (or a small task with no issue) end to end, verifies it, gets an independent review, opens a PR with evidence, checks migrations, assesses merge risk, auto-merges when safe, and monitors production. |
+| [autopilot](skills/autopilot/SKILL.md) | `autopilot <Linear issue>` or `autopilot <small task>`: implements the issue (or a small task with no issue) end to end, verifies it, gets an independent review, opens a PR with evidence, checks migrations, files follow-ups in Linear, assesses merge risk, auto-merges when safe, and monitors production. |
 | [open-pr](skills/open-pr/SKILL.md) | Opens a PR with a consistent title and body: problem-first summary with a small visual, before/after evidence, verification, merge danger (one-way or two-way door, blast radius), follow-ups. Follows the repo's PR template when there is one. autopilot files its PRs with it, so hand-made and autopilot PRs look the same. |
 | [capture-evidence](skills/capture-evidence/SKILL.md) | Plans and captures before/after evidence for a change (screenshots, recordings, Mermaid flow diagrams, failing-then-passing tests), capturing "before" on the base without touching your working tree. autopilot uses it for every run. |
 | [check-migrations](skills/check-migrations/SKILL.md) | Finds a PR's database migrations and checks them: automatic apply, production's state (read-only), safety before and after merge, locks, security, rollback. Gives a verdict and the exact command; never applies anything. |
